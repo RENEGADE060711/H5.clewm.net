@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内容加密验证</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+        }
+        body {
+            background-color: #f9f9f9; /* 匹配图片浅白背景 */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0 20px;
+            position: relative;
+        }
+        /* 标题：完全匹配图片字体大小、间距、居中 */
+        .encrypt-title {
+            font-size: 24px;
+            color: #000;
+            font-weight: 500;
+            margin-top: 180px; /* 匹配图片标题顶部间距 */
+            margin-bottom: 60px; /* 匹配标题到输入框间距 */
+            text-align: center;
+        }
+        /* 密码输入框：完全匹配图片尺寸、边框、占位文字样式 */
+        .password-wrap {
+            width: 100%;
+            max-width: 500px;
+            height: 50px;
+            border: 1px solid #e5e5e5;
+            border-radius: 2px;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 120px; /* 匹配输入框到单选框间距 */
+            position: relative;
+            overflow: hidden;
+        }
+        .password-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            cursor: text;
+        }
+        .password-placeholder {
+            font-size: 16px;
+            color: #999; /* 匹配图片占位文字灰色 */
+            z-index: 0;
+        }
+        .password-dots {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 0;
+            display: none; /* 无输入时显示占位符，隐藏圆点 */
+        }
+        .password-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #000; /* 黑色实心圆点 */
+            border-radius: 50%;
+        }
+        /* 下次自动进入：完全匹配图片单选框大小、文字样式、间距 */
+        .auto-enter {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px; /* 匹配单选框到按钮间距 */
+            cursor: pointer;
+        }
+        .radio-circle {
+            width: 18px;
+            height: 18px;
+            border: 1px solid #d9d9d9;
+            border-radius: 50%;
+            background-color: #fff;
+            margin-right: 8px; /* 匹配单选框到文字间距 */
+            position: relative;
+        }
+        .auto-enter.active .radio-circle {
+            background-color: #0066ff;
+            border-color: #0066ff;
+        }
+        .auto-enter.active .radio-circle::after {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 6px;
+            width: 4px;
+            height: 8px;
+            border-right: 2px solid #fff;
+            border-bottom: 2px solid #fff;
+            transform: rotate(45deg);
+        }
+        .auto-text {
+            font-size: 14px; /* 匹配图片文字大小 */
+            color: #999; /* 匹配图片文字灰色 */
+        }
+        /* 确定按钮：完全匹配图片蓝色、尺寸、圆角、文字样式 */
+        .confirm-btn {
+            width: 280px; /* 匹配图片按钮宽度 */
+            height: 44px; /* 匹配图片按钮高度 */
+            background-color: #0066ff; /* 匹配图片蓝色按钮 */
+            color: #fff;
+            border: none;
+            border-radius: 2px; /* 匹配图片按钮圆角 */
+            font-size: 16px; /* 匹配图片按钮文字大小 */
+            font-weight: 400;
+            cursor: pointer;
+            margin-bottom: 150px; /* 匹配按钮到底部文字间距 */
+        }
+        /* 底部信息：完全匹配图片文字大小、颜色、间距 */
+        .footer-info {
+            text-align: center;
+            margin-top: auto;
+            margin-bottom: 30px;
+        }
+        .cl草料-logo {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .cl草料-logo span {
+            color: #67c23a;
+            font-size: 14px;
+        }
+        .desc-text {
+            font-size: 12px; /* 匹配图片底部说明文字大小 */
+            color: #999;
+        }
+        .desc-text span {
+            color: #666; /* 匹配“扫过的码”蓝色/深灰色 */
+        }
+        /* 密码错误弹窗：保留原有功能，样式匹配移动端 */
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            display: none;
+        }
+        .modal-box {
+            width: 80%;
+            max-width: 350px;
+            background-color: #333;
+            border-radius: 12px;
+            padding: 25px 20px;
+            text-align: center;
+        }
+        .modal-title {
+            font-size: 22px;
+            color: #fff;
+            margin-bottom: 15px;
+            font-weight: 400;
+        }
+        .modal-desc {
+            font-size: 16px;
+            color: #ccc;
+            margin-bottom: 25px;
+        }
+        .modal-confirm {
+            width: 100%;
+            height: 45px;
+            background: transparent;
+            border-top: 1px solid #666;
+            color: #4096ff;
+            border: none;
+            border-top: 1px solid #666;
+            font-size: 18px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="encrypt-title">该内容已被制作者加密</h1>
+    
+    <!-- 密码输入框：匹配图片占位符+黑色圆点输入效果 -->
+    <div class="password-wrap">
+        <input type="password" class="password-input" id="realPwdInput">
+        <div class="password-placeholder" id="pwdPlaceholder">请输入访问密码</div>
+        <div class="password-dots" id="pwdDots">
+            <span class="password-dot"></span>
+            <span class="password-dot"></span>
+            <span class="password-dot"></span>
+            <span class="password-dot"></span>
+            <span class="password-dot"></span>
+            <span class="password-dot"></span>
+        </div>
+    </div>
+
+    <!-- 下次自动进入：匹配图片样式+可点击勾选 -->
+    <div class="auto-enter">
+        <div class="radio-circle"></div>
+        <span class="auto-text">下次自动进入</span>
+    </div>
+
+    <!-- 确定按钮：匹配图片样式 -->
+    <button class="confirm-btn">确定</button>
+
+    <!-- 底部信息：匹配图片文字样式 -->
+    <div class="footer-info">
+        <div class="cl草料-logo">
+            <span>🍀</span>
+            草料二维码
+        </div>
+        <p class="desc-text">今后可随时在<span>扫过的码</span>中查看该内容</p>
+    </div>
+
+    <!-- 密码错误弹窗 -->
+    <div class="modal-mask" id="errorModal">
+        <div class="modal-box">
+            <div class="modal-title">密码错误</div>
+            <div class="modal-desc">请重新输入密码</div>
+            <button class="modal-confirm" id="modalConfirm">确定</button>
+        </div>
+    </div>
+
+    <script>
+        // 下次自动进入勾选功能
+        const autoEnter = document.querySelector('.auto-enter');
+        autoEnter.addEventListener('click', () => {
+            autoEnter.classList.toggle('active');
+        });
+
+        // 密码输入：无输入显示占位符，有输入显示黑色圆点
+        const realPwdInput = document.getElementById('realPwdInput');
+        const pwdPlaceholder = document.getElementById('pwdPlaceholder');
+        const pwdDots = document.getElementById('pwdDots');
+        const dotItems = pwdDots.querySelectorAll('.password-dot');
+
+        realPwdInput.addEventListener('input', function() {
+            const inputLength = this.value.length;
+            if (inputLength > 0) {
+                pwdPlaceholder.style.display = 'none';
+                pwdDots.style.display = 'flex';
+                // 根据输入长度显示圆点
+                dotItems.forEach((dot, index) => {
+                    dot.style.display = index < inputLength ? 'block' : 'none';
+                });
+            } else {
+                pwdPlaceholder.style.display = 'block';
+                pwdDots.style.display = 'none';
+            }
+        });
+
+        // 密码错误弹窗逻辑
+        const confirmBtn = document.querySelector('.confirm-btn');
+        const errorModal = document.getElementById('errorModal');
+        const modalConfirm = document.getElementById('modalConfirm');
+
+        confirmBtn.addEventListener('click', () => {
+            errorModal.style.display = 'flex';
+            // 清空密码和圆点，恢复占位符
+            realPwdInput.value = '';
+            pwdPlaceholder.style.display = 'block';
+            pwdDots.style.display = 'none';
+        });
+
+        modalConfirm.addEventListener('click', () => {
+            errorModal.style.display = 'none';
+            realPwdInput.focus();
+        });
+    </script>
+</body>
+</html>
